@@ -1,0 +1,5 @@
+light_1:
+  gpio: 23
+  channel: 0
+  frequency: 1000
+  alias: "light_1"
