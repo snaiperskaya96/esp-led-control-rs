@@ -1,5 +1,15 @@
 light_1:
-  gpio: 23
+  gpio: 13
   channel: 0
   frequency: 1000
   alias: "light_1"
+light_2:
+  gpio: 18
+  channel: 1
+  frequency: 1000
+  alias: "light_2"
+light_3:
+  gpio: 22
+  channel: 2
+  frequency: 1000
+  alias: "light_3"

@@ -105,7 +105,10 @@ pub fn gpio_driver(
     };
 
     let gpio_configs = gpio_config::get_configs().unwrap();
-    let target = gpio_configs.iter().find(|x| *x.1.alias == *gpio_alias).unwrap();
+    let target = match gpio_configs.iter().find(|x| *x.1.alias == *gpio_alias) {
+        Some(conf) => conf,
+        None => return Err(anyhow::anyhow!("Could not find specified config {}", gpio_alias))
+    };
 
     for driver in &*GPIO_DRIVERS {
         if driver.lock().unwrap().channel() == target.1.channel as u32 {

@@ -1,4 +1,4 @@
-use embedded_svc::{http::Headers, io::Read};
+use embedded_svc::{http::Headers, io::{Read, Write}};
 use esp_idf_svc::http::server::{EspHttpServer, EspHttpConnection};
 use serde::{Serialize, Deserialize};
 
@@ -69,6 +69,39 @@ pub fn start_rest_server() -> anyhow::Result<EspHttpServer<'static>> {
 
         let mut res = req.into_ok_response()?;
         res.flush()?;
+        Ok(())
+    })?;
+
+    // /status?alias=light_1
+    server.fn_handler("/status", esp_idf_svc::http::Method::Get, |req| {
+        let uri = req.uri().to_string();
+        let uri = uri.replace("/status", "");
+        let query_params = querystring::querify(uri.as_str());
+
+        match query_params.iter().find(|x| x.0 == "alias") {
+            Some(alias) => {
+                let p = crate::pwm::gpio_driver(&alias.1.to_string())?;
+
+                let gpio = p.lock().unwrap();
+                let duty = (gpio.get_duty() as f32) / (gpio.get_max_duty() as f32) * 100_f32;        
+        
+                #[derive(Serialize)]
+                struct StatusResp {
+                    is_active: bool,
+                    duty: f32,
+                }
+        
+                let status = StatusResp { is_active: gpio.get_duty() != 0, duty };
+        
+                let mut res = req.into_ok_response()?;
+                write!(res, "{}", serde_json::to_string(&status)?)?;
+            },
+            None => {
+                let mut res = req.into_status_response(404)?;
+                write!(res, "Should specify an alias.")?;
+            },
+        }
+
         Ok(())
     })?;
     

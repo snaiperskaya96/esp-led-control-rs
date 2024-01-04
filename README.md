@@ -7,6 +7,7 @@ The API are as follow:
   - POST /turn_on - Turn PWN on a given gpio on. Takes a json object in the following format { "alias": "some_gpio_alias" }
   - POST /turn_off - Turn PWN off a given gpio on. Takes a json object in the following format { "alias": "some_gpio_alias" }
   - POST /dim - Sets a given gpio's cycle duty to a specified value.  Takes a json object in the following format { "alias": "some_gpio_alias", "dim": 100 }
+  - GET /status?alias=light_1 - Returns the current state of a given gpio by its alias.
 
 GPIO configuration is done in the gpio_config.yaml file within the root directory. Format is as follow:
 
