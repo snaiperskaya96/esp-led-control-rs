@@ -37,7 +37,12 @@ pub fn start_rest_server() -> anyhow::Result<EspHttpServer<'static>> {
 
         let p = crate::pwm::gpio_driver(&state.alias)?;
         log::info!("Turning on gpio {}.", state.alias);
-        p.lock().unwrap().enable()?;
+        let gpio = p.lock().unwrap();
+        gpio.enable()?;
+
+        if let Some(dim) = state.dim {
+            dim(&mut gpio, &mut *dim);
+        }
 
         let mut res = req.into_ok_response()?;
         res.flush()?;
@@ -62,10 +67,9 @@ pub fn start_rest_server() -> anyhow::Result<EspHttpServer<'static>> {
         
         let p = crate::pwm::gpio_driver(&state.alias)?;
         let mut gpio = p.lock().unwrap();
-        let duty = state.dim.unwrap() as f32 * gpio.get_max_duty() as f32 / 100_f32;
 
-        log::info!("Setting gpio {} duty to {}", state.alias, duty as u32);
-        gpio.set_duty(duty as _)?;
+        log::info!("Setting gpio {} duty to {}", state.alias, state.dim);
+        dim(&mut *gpio, state.dim.unwrap());
 
         let mut res = req.into_ok_response()?;
         res.flush()?;
@@ -109,3 +113,8 @@ pub fn start_rest_server() -> anyhow::Result<EspHttpServer<'static>> {
     Ok(server)
 }
 
+fn dim(gpio: &mut LedcDriver<'static>, dim: u8) {
+    let duty = dim as f32 * gpio.get_max_duty() as f32 / 100_f32;
+
+    gpio.set_duty(duty as _)?;
+}
