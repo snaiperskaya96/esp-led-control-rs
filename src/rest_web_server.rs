@@ -1,4 +1,5 @@
 use embedded_svc::{http::Headers, io::{Read, Write}};
+use esp_idf_hal::{ledc::LedcDriver, sys::EspError};
 use esp_idf_svc::http::server::{EspHttpServer, EspHttpConnection};
 use serde::{Serialize, Deserialize};
 
@@ -37,11 +38,11 @@ pub fn start_rest_server() -> anyhow::Result<EspHttpServer<'static>> {
 
         let p = crate::pwm::gpio_driver(&state.alias)?;
         log::info!("Turning on gpio {}.", state.alias);
-        let gpio = p.lock().unwrap();
+        let mut gpio = p.lock().unwrap();
         gpio.enable()?;
 
-        if let Some(dim) = state.dim {
-            dim(&mut gpio, &mut *dim);
+        if let Some(dim_value) = state.dim {
+            dim(&mut *gpio, dim_value)?;
         }
 
         let mut res = req.into_ok_response()?;
@@ -68,8 +69,8 @@ pub fn start_rest_server() -> anyhow::Result<EspHttpServer<'static>> {
         let p = crate::pwm::gpio_driver(&state.alias)?;
         let mut gpio = p.lock().unwrap();
 
-        log::info!("Setting gpio {} duty to {}", state.alias, state.dim);
-        dim(&mut *gpio, state.dim.unwrap());
+        log::info!("Setting gpio {} duty to {:?}", state.alias, state.dim);
+        dim(&mut *gpio, state.dim.unwrap())?;
 
         let mut res = req.into_ok_response()?;
         res.flush()?;
@@ -95,7 +96,7 @@ pub fn start_rest_server() -> anyhow::Result<EspHttpServer<'static>> {
                     duty: f32,
                 }
         
-                let status = StatusResp { is_active: gpio.get_duty() != 0, duty };
+                let status = StatusResp { is_active: duty as u8 > 0, duty };
         
                 let mut res = req.into_ok_response()?;
                 write!(res, "{}", serde_json::to_string(&status)?)?;
@@ -113,8 +114,10 @@ pub fn start_rest_server() -> anyhow::Result<EspHttpServer<'static>> {
     Ok(server)
 }
 
-fn dim(gpio: &mut LedcDriver<'static>, dim: u8) {
+fn dim(gpio: &mut LedcDriver<'static>, dim: u8) -> Result<(), EspError> {
     let duty = dim as f32 * gpio.get_max_duty() as f32 / 100_f32;
 
     gpio.set_duty(duty as _)?;
+
+    Ok(())
 }
